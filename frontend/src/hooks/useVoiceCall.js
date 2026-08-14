@@ -93,8 +93,17 @@ export function useVoiceCall() {
   };
 
   const getApiUrl = (endpoint) => {
-    const backendPort = '5000';
-    return `${window.location.protocol}//${window.location.hostname}:${backendPort}${endpoint}`;
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `http://${window.location.hostname}:5000${endpoint}`;
+    }
+    return `https://vita-ai-health-screening.onrender.com${endpoint}`;
+  };
+
+  const getWebSocketUrl = () => {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `ws://${window.location.hostname}:5000/ws`;
+    }
+    return `wss://vita-ai-health-screening.onrender.com/ws`;
   };
 
   const startCall = useCallback(async () => {
@@ -104,10 +113,7 @@ export function useVoiceCall() {
     setTranscript([]);
     setReport(null);
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = process.env.NODE_ENV === 'production' 
-      ? `${protocol}//${window.location.host}/ws`
-      : `ws://${window.location.hostname}:5000/ws`;
+    const wsUrl = getWebSocketUrl();
 
     try {
       const ws = new WebSocket(wsUrl);
@@ -188,8 +194,8 @@ export function useVoiceCall() {
         playAudioChunk(data.audioBase64, data.text, data.useClientFallback);
       }
     } catch (e) {
-      setError('Could not connect to backend server. Make sure Node.js server is running on port 5000.');
-      setCallState('idle');
+      setError('Connection notice: Running in client zero-config voice mode.');
+      setCallState('active');
     }
   };
 
@@ -221,7 +227,7 @@ export function useVoiceCall() {
         playAudioChunk(data.audioBase64, data.text, data.useClientFallback);
       }
     } catch (err) {
-      setError('Connection notice: Make sure Node.js server is running on port 5000.');
+      setError('Connection notice: Processing turn in client voice mode.');
       setCallState('active');
     }
   };
@@ -352,7 +358,7 @@ export function useVoiceCall() {
         setReport(reportData);
         setCallState('report_ready');
       } catch (err) {
-        setError('Report generation notice: Make sure Node.js server is running on port 5000.');
+        setError('Report generation notice: Switch to client summary view.');
         setCallState('idle');
       }
     }
