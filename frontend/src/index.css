@@ -237,6 +237,50 @@ h1, h2, h3, h4, h5 {
   background: rgba(0, 242, 254, 0.4);
 }
 
+/* Responsive Styles for Mobile Phones & Tablets */
+@media (max-width: 992px) {
+  header {
+    padding: 14px 18px !important;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  main {
+    padding: 0 12px;
+  }
+
+  .call-interface-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .workflow-steps-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .voice-orb-container {
+    width: 140px;
+    height: 140px;
+  }
+}
+
+@media (max-width: 600px) {
+  h1 {
+    font-size: 2.1rem !important;
+  }
+
+  .btn-primary, .btn-danger, .btn-secondary {
+    padding: 10px 18px !important;
+    font-size: 0.9rem !important;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .voice-orb-container {
+    width: 120px;
+    height: 120px;
+  }
+}
+
 /* Print Optimization for PDF Export */
 @media print {
   body {

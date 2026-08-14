@@ -72,13 +72,13 @@ export function CallInterface({
     <div style={{ maxWidth: '1200px', margin: '28px auto', padding: '0 24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* Top Banner Session Bar */}
-      <div className="glass-panel" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: '16px' }}>
+      <div className="glass-panel" style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: '16px', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(0, 242, 254, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Radio size={20} color="var(--primary-cyan)" />
           </div>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <h2 style={{ fontSize: '1.1rem', fontWeight: '700' }}>Live Health Screening Session</h2>
               <span className="badge badge-cyan" style={{ padding: '2px 8px', fontSize: '0.75rem' }}>
                 <Clock size={12} /> {formatTimer(callDuration)}
@@ -90,7 +90,7 @@ export function CallInterface({
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
           <span className={`badge ${callState === 'ai_speaking' ? 'badge-green' : callState === 'user_speaking' ? 'badge-amber' : 'badge-cyan'}`}>
             <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'currentColor', display: 'inline-block' }}></span>
             {callState.toUpperCase()}
@@ -106,10 +106,10 @@ export function CallInterface({
       </div>
 
       {/* Main Grid: Left Audio Orb & Progress Checklist / Right Live Dialogue */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 440px', gap: '24px' }}>
+      <div className="call-interface-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 440px', gap: '24px' }}>
         
         {/* Left Card: Live Voice Orb & Control Buttons */}
-        <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '600px' }}>
+        <div className="glass-panel" style={{ padding: '32px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '520px' }}>
           
           <div style={{ textAlign: 'center' }}>
             
@@ -128,7 +128,7 @@ export function CallInterface({
               </div>
             </div>
 
-            <h3 style={{ marginTop: '24px', fontSize: '1.3rem', color: 'var(--text-main)' }}>
+            <h3 style={{ marginTop: '24px', fontSize: '1.2rem', color: 'var(--text-main)' }}>
               {getStatusText()}
             </h3>
 
@@ -165,7 +165,7 @@ export function CallInterface({
                 Start Health Intake Call
               </button>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
                 
                 {/* Dedicated Button 1: Push to Speak */}
                 <button 
@@ -279,7 +279,7 @@ export function CallInterface({
         </div>
 
         {/* Right Card: Live Transcript & Dialogue */}
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', height: '600px' }}>
+        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', minHeight: '400px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '16px', borderBottom: '1px solid var(--border-color)' }}>
             <h3 style={{ fontSize: '0.98rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <MessageSquare size={18} color="var(--primary-cyan)" />
@@ -290,7 +290,7 @@ export function CallInterface({
             </span>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 4px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 4px', display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '480px' }}>
             {transcript.length === 0 ? (
               <div style={{ textAlign: 'center', color: 'var(--text-sub)', marginTop: '60px', fontSize: '0.85rem' }}>
                 <p>Transcript will update live as the screening conversation progresses.</p>

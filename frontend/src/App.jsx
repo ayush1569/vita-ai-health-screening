@@ -59,7 +59,7 @@ export function App() {
             </p>
 
             {/* Workflow steps cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', textAlign: 'left', marginBottom: '16px' }}>
+            <div className="workflow-steps-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', textAlign: 'left', marginBottom: '16px' }}>
               <div className="glass-panel" style={{ padding: '24px' }}>
                 <div style={{ background: 'rgba(0, 242, 254, 0.15)', width: '42px', height: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
                   <Mic size={22} color="var(--primary-cyan)" />
