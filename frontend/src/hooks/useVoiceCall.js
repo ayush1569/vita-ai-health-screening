@@ -18,6 +18,7 @@ export function useVoiceCall() {
   const currentAudioRef = useRef(null);
   const speechRecognitionRef = useRef(null);
   const recognizedTextRef = useRef('');
+  const activeStreamRef = useRef(null);
 
   const updateApiKey = (key) => {
     setApiKey(key);
@@ -277,12 +278,25 @@ export function useVoiceCall() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      activeStreamRef.current = stream;
       audioChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+      let options = {};
+      if (typeof MediaRecorder !== 'undefined') {
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          options = { mimeType: 'audio/webm;codecs=opus' };
+        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+          options = { mimeType: 'audio/webm' };
+        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          options = { mimeType: 'audio/mp4' };
+        }
+      }
+
+      const mediaRecorder = options.mimeType ? new MediaRecorder(stream, options) : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
@@ -293,44 +307,72 @@ export function useVoiceCall() {
         }
 
         const finalText = recognizedTextRef.current.trim() || sttInterimText.trim();
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const mimeUsed = options.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeUsed });
         
-        const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
-        reader.onloadend = () => {
-          const base64Audio = reader.result.split(',')[1];
-          setCallState('ai_thinking');
-          
-          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({
-              type: 'user_turn',
-              text: finalText,
-              audioBase64: base64Audio,
-              mimeType: 'audio/webm'
-            }));
-          } else {
-            sendUserTurnText(finalText || "Patient provided response");
-          }
-        };
+        if (audioBlob.size > 0) {
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = () => {
+            const base64Audio = reader.result.split(',')[1];
+            setCallState('ai_thinking');
+            
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+              wsRef.current.send(JSON.stringify({
+                type: 'user_turn',
+                text: finalText,
+                audioBase64: base64Audio,
+                mimeType: mimeUsed
+              }));
+            } else {
+              sendUserTurnText(finalText || "Patient provided response");
+            }
+          };
+        } else {
+          sendUserTurnText(finalText || "Patient provided response");
+        }
 
-        stream.getTracks().forEach(track => track.stop());
+        if (activeStreamRef.current) {
+          activeStreamRef.current.getTracks().forEach(track => track.stop());
+          activeStreamRef.current = null;
+        }
       };
 
       mediaRecorder.start();
       setCallState('user_speaking');
     } catch (err) {
       console.warn('Microphone access notice:', err);
+      setCallState('user_speaking');
     }
   }, [stopCurrentAudio, language, sttInterimText, sendUserTurnText]);
 
   const stopRecordingTurn = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
+    let stoppedMediaRecorder = false;
+    if (mediaRecorderRef.current) {
+      if (mediaRecorderRef.current.state === 'recording' || mediaRecorderRef.current.state === 'paused') {
+        try {
+          mediaRecorderRef.current.stop();
+          stoppedMediaRecorder = true;
+        } catch (e) {
+          console.warn('Error stopping MediaRecorder:', e);
+        }
+      }
     }
+
     if (speechRecognitionRef.current) {
       try { speechRecognitionRef.current.stop(); } catch (e) {}
     }
-  }, []);
+
+    // Mobile Safeguard: If MediaRecorder was not active or failed to trigger onstop event, submit immediately!
+    if (!stoppedMediaRecorder) {
+      const finalText = recognizedTextRef.current.trim() || sttInterimText.trim();
+      if (finalText) {
+        sendUserTurnText(finalText);
+      } else {
+        sendUserTurnText("Patient completed voice response");
+      }
+    }
+  }, [sendUserTurnText, sttInterimText]);
 
   const handleBargeIn = useCallback(() => {
     stopCurrentAudio();
