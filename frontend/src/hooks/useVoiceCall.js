@@ -291,7 +291,13 @@ export function useVoiceCall() {
           if (final) {
             recognizedTextRef.current += ' ' + final;
           }
-          setSttInterimText(interim || recognizedTextRef.current.trim());
+          setSttInterimText(interim.trim() || recognizedTextRef.current.trim());
+        };
+
+        recognition.onend = () => {
+          if (sttInterimText && !recognizedTextRef.current.includes(sttInterimText)) {
+            recognizedTextRef.current += ' ' + sttInterimText;
+          }
         };
 
         recognition.start();

@@ -58,7 +58,7 @@ export async function generateHealthReport({ transcript = [], callDurationSecond
 
 function createEmptyReport(duration) {
   return {
-    patientName: "Not Provided",
+    patientName: "Patient (Unspecified)",
     chiefComplaint: "Incomplete Call / No symptoms recorded",
     onsetAndDuration: "Unspecified",
     severityScore: 0,
@@ -86,14 +86,15 @@ function createFallbackReport(transcript, duration) {
   const isHindi = /[\u0900-\u097F]/.test(fullText) || /bukhar|dard|din|hai|hu|naam|kamzori/i.test(fullText);
   const isShortCall = transcript.length <= 2;
 
-  // Extract patient name
-  const patientName = extractNameFallback(fullText) || "Ayush Pratap Singh";
+  // Extract dynamic patient name from dialogue or fallback cleanly
+  const extractedName = extractNameFallback(fullText);
+  const patientName = extractedName || (userTurns.length > 0 ? "Patient" : "Patient (Unspecified)");
 
   // Extract medical symptoms cleanly from user turns
   const extractedSymptoms = extractSymptomsFallback(fullText);
   const keySymptoms = extractedSymptoms.length > 0 
     ? extractedSymptoms 
-    : [cleanTurnText(userTurns[0]) || (isHindi ? "सामान्य अस्वस्थता" : "General Unwellness")];
+    : [cleanTurnText(userTurns[0]) || (isHindi ? "सामान्य अस्वस्थता" : "General Health Concern")];
 
   // Chief complaint summary
   const chiefComplaint = keySymptoms.join(', ') + " reported during voice intake.";
@@ -122,7 +123,7 @@ function createFallbackReport(transcript, duration) {
     relevantHistoryOrAllergies: "None reported during screening",
     clinicalSummary: clinicalSummary,
     flaggedRisks: severityScore >= 7 
-      ? ["High severity rating (7/10) reported", "Monitor for acute changes or worsening"]
+      ? ["High severity rating reported", "Monitor for acute changes or worsening"]
       : ["Monitor symptoms for progression"],
     recommendedNextSteps: [
       "Attending physician review of preliminary intake findings",
@@ -138,10 +139,11 @@ function createFallbackReport(transcript, duration) {
 }
 
 function extractNameFallback(text) {
-  const match = text.match(/(?:my name is|name is|i am|naam hai|mera naam) ([A-Za-z\s]+?)(?:\.|\,|$|like|i feel|and|my|probably)/i);
+  if (!text) return null;
+  const match = text.match(/(?:my name is|name is|i am|naam|naam hai|mera naam|call me) ([A-Za-z\s]+?)(?:\.|\,|$|like|i feel|and|my|probably|for|since|having|feeling)/i);
   if (match && match[1]) {
     const cleaned = match[1].trim();
-    if (cleaned.length > 1 && cleaned.length < 40) {
+    if (cleaned.length > 1 && cleaned.length < 35 && !/weakness|fever|pain|cough|indigestion|sick|bad|good|very|moderate|high/i.test(cleaned)) {
       return cleaned.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
     }
   }
@@ -208,5 +210,5 @@ function extractTimelineFallback(text) {
 
 function cleanTurnText(text) {
   if (!text) return '';
-  return text.replace(/(?:hello|hi|aura|ai|like|what i feel right now|my name is [A-Za-z\s]+)/gi, '').trim();
+  return text.replace(/(?:hello|hi|aura|vita|ai|like|what i feel right now|my name is [A-Za-z\s]+)/gi, '').trim();
 }
