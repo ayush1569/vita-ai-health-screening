@@ -88,25 +88,33 @@ export async function generateIntakeResponse({ conversationHistory = [], userUtt
 }
 
 function generateIntakeFallback({ conversationHistory, userUtterance, languagePreference }) {
+  const userTurns = conversationHistory.filter(t => t.role === 'user');
+  const userTurnCount = userTurns.length + (userUtterance ? 1 : 0);
   const isHindi = /[\u0900-\u097F]/.test(userUtterance) || languagePreference === 'hi' || /namaste|bukhar|dard|din|hai|hu|kamzori/i.test(userUtterance);
-  const turnsCount = conversationHistory.length;
 
   let replyText = "";
   let isComplete = false;
 
-  if (turnsCount <= 1) {
+  // Turn 1: Patient Name & Chief Complaint -> Ask Onset & Duration
+  if (userTurnCount <= 1) {
     replyText = isHindi 
-      ? "धन्यवाद जानकारी देने के लिए। क्या आप बता सकते हैं कि यह समस्या आपको कितने दिनों या घंटों से हो रही है?"
-      : "Thank you for sharing that. Could you tell me how long you've been experiencing this issue and if it started suddenly or gradually?";
-  } else if (turnsCount <= 3) {
+      ? "धन्यवाद यह जानकारी देने के लिए। क्या आप बता सकते हैं कि यह समस्या आपको कितने दिनों या घंटों से हो रही है, और क्या यह अचानक शुरू हुई?"
+      : "Thank you for sharing that. Could you tell me when these symptoms started and how long they have been going on?";
+  } 
+  // Turn 2: Onset & Duration -> Ask Severity Score (1-10)
+  else if (userTurnCount === 2) {
     replyText = isHindi
-      ? "समझ गया। 1 से 10 के पैमाने पर, जहाँ 10 सबसे अधिक दर्द है, आप अपनी तकलीफ या दर्द को कितना अंक देंगे?"
-      : "I understand. On a scale of 1 to 10, with 10 being the most severe pain or discomfort, how would you rate what you're feeling right now?";
-  } else if (turnsCount <= 5) {
+      ? "समझ गया। 1 से 10 के पैमाने पर, जहाँ 10 सबसे अधिक तकलीफ है, आप अपनी तकलीफ या दर्द को कितना अंक देंगे?"
+      : "Thank you. On a scale of 1 to 10, with 10 being the most severe pain or discomfort, how would you rate what you're feeling right now?";
+  } 
+  // Turn 3: Severity Rating -> Ask Associated Symptoms & History
+  else if (userTurnCount === 3) {
     replyText = isHindi
-      ? "क्या आपको इसके अलावा कोई और लक्षण जैसे बुखार, चक्कर, या मतली महसूस हो रही है? और क्या आपकी कोई पुरानी बीमारी या एलर्जी है?"
-      : "Are you noticing any other associated symptoms like fever, dizziness, or nausea? Also, do you have any pre-existing medical conditions or allergies?";
-  } else {
+      ? "नोट कर लिया गया है। क्या आपको इसके अलावा कोई और लक्षण जैसे बुखार, चक्कर, या मतली महसूस हो रही है? और क्या आपकी कोई पुरानी बीमारी या एलर्जी है?"
+      : "Got it. Are you noticing any other associated symptoms like fever, dizziness, or nausea? Also, do you have any pre-existing medical conditions or allergies?";
+  } 
+  // Turn 4+: Intake Complete -> Summarize & Finish
+  else {
     replyText = isHindi
       ? "बहुत-बहुत धन्यवाद। मैंने आपकी सभी जानकारी दर्ज कर ली है। अब मैं आपकी इनटेक रिपोर्ट तैयार कर रहा हूँ जो आपके डॉक्टर को भेजी जाएगी। टेक केयर!"
       : "Thank you very much. I have collected all the necessary screening details. I am now compiling your formal intake report for the attending doctor. Take care!";

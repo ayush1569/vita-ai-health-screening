@@ -34,12 +34,13 @@ export function CallInterface({
   const calculateChecklistProgress = () => {
     let count = 0;
     const fullText = transcript.map(t => t.content).join(' ');
+    const userTurnCount = transcript.filter(t => t.role === 'user').length;
     
-    if (/name is|naam|i am/i.test(fullText) || transcript.length >= 1) count++;
-    if (transcript.length >= 2) count++;
-    if (/day|din|week|today|since|hours|gante/i.test(fullText) || transcript.length >= 4) count++;
-    if (/\b[1-9]|10\b/i.test(fullText) || transcript.length >= 5) count++;
-    if (transcript.length >= 6) count++;
+    if (userTurnCount >= 1 || /name|naam|i am/i.test(fullText)) count++;
+    if (userTurnCount >= 1) count++;
+    if (userTurnCount >= 2 || /day|din|week|today|since|hours|gante|started|ago/i.test(fullText)) count++;
+    if (userTurnCount >= 3 || /\b[1-9]|10\b/i.test(fullText)) count++;
+    if (userTurnCount >= 4) count++;
 
     return Math.min(count, 5);
   };
