@@ -46,12 +46,16 @@ export function useVoiceCall() {
 
   const stopCurrentAudio = useCallback(() => {
     if (currentAudioRef.current) {
-      currentAudioRef.current.pause();
-      currentAudioRef.current.currentTime = 0;
+      try {
+        currentAudioRef.current.onended = null;
+        currentAudioRef.current.onerror = null;
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+      } catch (e) {}
       currentAudioRef.current = null;
     }
     if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+      try { window.speechSynthesis.cancel(); } catch (e) {}
     }
   }, []);
 
@@ -64,7 +68,7 @@ export function useVoiceCall() {
       const audio = new Audio(`data:audio/mp3;base64,${audioBase64}`);
       currentAudioRef.current = audio;
       audio.onended = () => {
-        if (!isEndingCallRef.current && callStateRef.current !== 'report_ready') {
+        if (!isEndingCallRef.current && callStateRef.current === 'ai_speaking') {
           setCallState('active');
         }
       };
@@ -83,7 +87,7 @@ export function useVoiceCall() {
 
   const playWebSpeechFallback = (text) => {
     if (!('speechSynthesis' in window) || isEndingCallRef.current || callStateRef.current === 'report_ready') {
-      if (!isEndingCallRef.current && callStateRef.current !== 'report_ready') setCallState('active');
+      if (!isEndingCallRef.current && callStateRef.current === 'ai_speaking') setCallState('active');
       return;
     }
     window.speechSynthesis.cancel();
@@ -93,12 +97,12 @@ export function useVoiceCall() {
     utterance.rate = 1.0;
 
     utterance.onend = () => {
-      if (!isEndingCallRef.current && callStateRef.current !== 'report_ready') {
+      if (!isEndingCallRef.current && callStateRef.current === 'ai_speaking') {
         setCallState('active');
       }
     };
     utterance.onerror = () => {
-      if (!isEndingCallRef.current && callStateRef.current !== 'report_ready') {
+      if (!isEndingCallRef.current && callStateRef.current === 'ai_speaking') {
         setCallState('active');
       }
     };
@@ -302,7 +306,6 @@ export function useVoiceCall() {
         };
 
         recognition.onend = () => {
-          // Keep Chrome SpeechRecognition alive continuously while user is speaking!
           if (callStateRef.current === 'user_speaking') {
             try { recognition.start(); } catch (e) {}
           }
