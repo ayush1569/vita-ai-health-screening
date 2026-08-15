@@ -269,7 +269,7 @@ export function useVoiceCall() {
     setSttInterimText('');
     recognizedTextRef.current = '';
 
-    // Safely check for Web Speech API in Brave / Chromium without breaking execution
+    // Web Speech API with Auto-Restart Loop on Chrome/Brave
     try {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (SpeechRecognition) {
@@ -298,7 +298,14 @@ export function useVoiceCall() {
         };
 
         recognition.onerror = (event) => {
-          console.warn('SpeechRecognition error (Brave Shields / Permissions):', event.error);
+          console.warn('SpeechRecognition notice:', event.error);
+        };
+
+        recognition.onend = () => {
+          // Keep Chrome SpeechRecognition alive continuously while user is speaking!
+          if (callStateRef.current === 'user_speaking') {
+            try { recognition.start(); } catch (e) {}
+          }
         };
 
         try {
@@ -312,7 +319,7 @@ export function useVoiceCall() {
       console.warn('Web Speech API setup notice:', e);
     }
 
-    // MediaRecorder Microphone Capture
+    // MediaRecorder Microphone Stream
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       activeStreamRef.current = stream;
@@ -382,8 +389,6 @@ export function useVoiceCall() {
       }
     } catch (err) {
       console.warn('Microphone access notice:', err);
-      setError('Brave Notice: Click the Shield/Lock icon in address bar to allow mic access, or use the Text Input box below.');
-      setCallState('active');
     }
   }, [stopCurrentAudio, language, sttInterimText, sendUserTurnText]);
 
