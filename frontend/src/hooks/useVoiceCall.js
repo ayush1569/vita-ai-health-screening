@@ -269,9 +269,10 @@ export function useVoiceCall() {
     setSttInterimText('');
     recognizedTextRef.current = '';
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      try {
+    // Safely check for Web Speech API in Brave / Chromium without breaking execution
+    try {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
         if (speechRecognitionRef.current) {
           try { speechRecognitionRef.current.abort(); } catch (e) {}
         }
@@ -296,17 +297,22 @@ export function useVoiceCall() {
           setSttInterimText(interim.trim() || recognizedTextRef.current.trim());
         };
 
+        recognition.onerror = (event) => {
+          console.warn('SpeechRecognition error (Brave Shields / Permissions):', event.error);
+        };
+
         try {
           recognition.start();
           speechRecognitionRef.current = recognition;
         } catch (e) {
           console.warn('SpeechRecognition start notice:', e);
         }
-      } catch (e) {
-        console.warn('SpeechRecognition setup notice:', e);
       }
+    } catch (e) {
+      console.warn('Web Speech API setup notice:', e);
     }
 
+    // MediaRecorder Microphone Capture
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       activeStreamRef.current = stream;
@@ -376,6 +382,8 @@ export function useVoiceCall() {
       }
     } catch (err) {
       console.warn('Microphone access notice:', err);
+      setError('Brave Notice: Click the Shield/Lock icon in address bar to allow mic access, or use the Text Input box below.');
+      setCallState('active');
     }
   }, [stopCurrentAudio, language, sttInterimText, sendUserTurnText]);
 
