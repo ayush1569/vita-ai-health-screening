@@ -171,9 +171,9 @@ export function CallInterface({
                 <button 
                   onClick={startRecordingTurn} 
                   className="btn-secondary" 
-                  disabled={callState === 'user_speaking' || callState === 'ai_thinking' || callState === 'ending_call'}
+                  disabled={callState === 'ai_thinking' || callState === 'ending_call'}
                   style={{
-                    opacity: callState === 'user_speaking' ? 0.4 : 1,
+                    opacity: callState === 'ai_thinking' || callState === 'ending_call' ? 0.4 : 1,
                     borderColor: 'rgba(16, 185, 129, 0.4)'
                   }}
                 >
@@ -185,15 +185,15 @@ export function CallInterface({
                 <button 
                   onClick={stopRecordingTurn} 
                   className="btn-primary" 
-                  disabled={callState !== 'user_speaking'}
+                  disabled={callState === 'idle' || callState === 'ending_call' || callState === 'report_ready'}
                   style={{
                     background: callState === 'user_speaking' 
                       ? 'linear-gradient(135deg, #10B981 0%, #059669 100%)' 
-                      : 'rgba(255, 255, 255, 0.08)',
-                    color: callState === 'user_speaking' ? '#070A13' : 'var(--text-sub)',
+                      : 'rgba(255, 255, 255, 0.12)',
+                    color: callState === 'user_speaking' ? '#070A13' : 'var(--text-main)',
                     boxShadow: callState === 'user_speaking' ? '0 0 20px rgba(16, 185, 129, 0.5)' : 'none',
-                    opacity: callState === 'user_speaking' ? 1 : 0.4,
-                    cursor: callState === 'user_speaking' ? 'pointer' : 'not-allowed'
+                    opacity: callState === 'idle' || callState === 'ending_call' ? 0.4 : 1,
+                    cursor: 'pointer'
                   }}
                 >
                   <Square size={16} fill="currentColor" />

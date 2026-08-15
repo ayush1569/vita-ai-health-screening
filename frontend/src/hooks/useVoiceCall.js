@@ -19,6 +19,12 @@ export function useVoiceCall() {
   const speechRecognitionRef = useRef(null);
   const recognizedTextRef = useRef('');
   const activeStreamRef = useRef(null);
+  const isEndingCallRef = useRef(false);
+  const callStateRef = useRef(callState);
+
+  useEffect(() => {
+    callStateRef.current = callState;
+  }, [callState]);
 
   const updateApiKey = (key) => {
     setApiKey(key);
@@ -51,13 +57,16 @@ export function useVoiceCall() {
 
   const playAudioChunk = useCallback((audioBase64, text, useClientFallback) => {
     stopCurrentAudio();
+    if (isEndingCallRef.current || callStateRef.current === 'report_ready') return;
     setCallState('ai_speaking');
 
     if (audioBase64 && !useClientFallback) {
       const audio = new Audio(`data:audio/mp3;base64,${audioBase64}`);
       currentAudioRef.current = audio;
       audio.onended = () => {
-        setCallState('active');
+        if (!isEndingCallRef.current && callStateRef.current !== 'report_ready') {
+          setCallState('active');
+        }
       };
       audio.onerror = () => {
         playWebSpeechFallback(text);
@@ -73,8 +82,8 @@ export function useVoiceCall() {
   }, [stopCurrentAudio]);
 
   const playWebSpeechFallback = (text) => {
-    if (!('speechSynthesis' in window)) {
-      setCallState('active');
+    if (!('speechSynthesis' in window) || isEndingCallRef.current || callStateRef.current === 'report_ready') {
+      if (!isEndingCallRef.current && callStateRef.current !== 'report_ready') setCallState('active');
       return;
     }
     window.speechSynthesis.cancel();
@@ -84,10 +93,14 @@ export function useVoiceCall() {
     utterance.rate = 1.0;
 
     utterance.onend = () => {
-      setCallState('active');
+      if (!isEndingCallRef.current && callStateRef.current !== 'report_ready') {
+        setCallState('active');
+      }
     };
     utterance.onerror = () => {
-      setCallState('active');
+      if (!isEndingCallRef.current && callStateRef.current !== 'report_ready') {
+        setCallState('active');
+      }
     };
 
     window.speechSynthesis.speak(utterance);
@@ -108,6 +121,7 @@ export function useVoiceCall() {
   };
 
   const startCall = useCallback(async () => {
+    isEndingCallRef.current = false;
     setError(null);
     setCallState('connecting');
     setCallDuration(0);
@@ -121,6 +135,7 @@ export function useVoiceCall() {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        if (isEndingCallRef.current) return;
         setCallState('active');
         ws.send(JSON.stringify({
           type: 'start_call',
@@ -130,6 +145,7 @@ export function useVoiceCall() {
       };
 
       ws.onmessage = (event) => {
+        if (isEndingCallRef.current && JSON.parse(event.data).type !== 'call_ended') return;
         const msg = JSON.parse(event.data);
 
         switch (msg.type) {
@@ -160,9 +176,10 @@ export function useVoiceCall() {
             break;
           case 'call_ended':
             stopCurrentAudio();
+            isEndingCallRef.current = true;
             setReport(msg.report);
             setCallState('report_ready');
-            ws.close();
+            try { ws.close(); } catch (e) {}
             break;
           case 'error':
             setError(msg.message);
@@ -172,16 +189,21 @@ export function useVoiceCall() {
       };
 
       ws.onerror = (err) => {
-        startCallHttpFallback();
+        if (!isEndingCallRef.current && callStateRef.current !== 'report_ready' && callStateRef.current !== 'ending_call') {
+          startCallHttpFallback();
+        }
       };
 
       ws.onclose = () => {};
     } catch (err) {
-      startCallHttpFallback();
+      if (!isEndingCallRef.current && callStateRef.current !== 'report_ready') {
+        startCallHttpFallback();
+      }
     }
   }, [language, apiKey, playAudioChunk, stopCurrentAudio]);
 
   const startCallHttpFallback = async () => {
+    if (isEndingCallRef.current || callStateRef.current === 'report_ready' || callStateRef.current === 'ending_call') return;
     try {
       setCallState('active');
       const res = await fetch(getApiUrl('/api/process-turn'), {
@@ -190,7 +212,7 @@ export function useVoiceCall() {
         body: JSON.stringify({ userText: '', history: [], language, apiKey })
       });
       const data = await res.json();
-      if (data.text) {
+      if (data.text && !isEndingCallRef.current) {
         setTranscript([{ role: 'assistant', content: data.text, timestamp: new Date().toLocaleTimeString() }]);
         playAudioChunk(data.audioBase64, data.text, data.useClientFallback);
       }
@@ -202,6 +224,7 @@ export function useVoiceCall() {
 
   const sendUserTurnText = useCallback((text) => {
     stopCurrentAudio();
+    if (isEndingCallRef.current) return;
     setCallState('ai_thinking');
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
@@ -214,6 +237,7 @@ export function useVoiceCall() {
   }, [stopCurrentAudio]);
 
   const sendUserTurnHttp = async (text) => {
+    if (isEndingCallRef.current) return;
     const updatedHistory = [...transcript, { role: 'user', content: text, timestamp: new Date().toLocaleTimeString() }];
     setTranscript(updatedHistory);
     try {
@@ -223,7 +247,7 @@ export function useVoiceCall() {
         body: JSON.stringify({ userText: text, history: updatedHistory, language, apiKey })
       });
       const data = await res.json();
-      if (data.text) {
+      if (data.text && !isEndingCallRef.current) {
         setTranscript([...updatedHistory, { role: 'assistant', content: data.text, timestamp: new Date().toLocaleTimeString() }]);
         playAudioChunk(data.audioBase64, data.text, data.useClientFallback);
       }
@@ -235,6 +259,7 @@ export function useVoiceCall() {
 
   const startRecordingTurn = useCallback(async () => {
     stopCurrentAudio();
+    if (isEndingCallRef.current) return;
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'barge_in' }));
     }
@@ -383,6 +408,7 @@ export function useVoiceCall() {
   }, [stopCurrentAudio]);
 
   const endCall = useCallback(async () => {
+    isEndingCallRef.current = true;
     stopCurrentAudio();
     stopRecordingTurn();
     setCallState('ending_call');
@@ -407,6 +433,7 @@ export function useVoiceCall() {
   }, [stopCurrentAudio, stopRecordingTurn, transcript, callDuration, apiKey]);
 
   const resetCall = useCallback(() => {
+    isEndingCallRef.current = false;
     stopCurrentAudio();
     setCallState('idle');
     setTranscript([]);
