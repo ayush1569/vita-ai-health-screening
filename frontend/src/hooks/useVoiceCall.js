@@ -369,7 +369,11 @@ export function useVoiceCall() {
         }
       };
 
-      mediaRecorder.start(250);
+      try {
+        mediaRecorder.start();
+      } catch (e) {
+        try { mediaRecorder.start(1000); } catch (err2) { console.warn('MediaRecorder start notice:', err2); }
+      }
     } catch (err) {
       console.warn('Microphone access notice:', err);
     }
