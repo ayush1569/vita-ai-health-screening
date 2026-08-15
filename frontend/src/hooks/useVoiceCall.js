@@ -260,6 +260,8 @@ export function useVoiceCall() {
   const startRecordingTurn = useCallback(async () => {
     stopCurrentAudio();
     if (isEndingCallRef.current) return;
+    setCallState('user_speaking');
+
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'barge_in' }));
     }
@@ -271,7 +273,7 @@ export function useVoiceCall() {
     if (SpeechRecognition) {
       try {
         if (speechRecognitionRef.current) {
-          try { speechRecognitionRef.current.stop(); } catch (e) {}
+          try { speechRecognitionRef.current.abort(); } catch (e) {}
         }
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
@@ -294,16 +296,14 @@ export function useVoiceCall() {
           setSttInterimText(interim.trim() || recognizedTextRef.current.trim());
         };
 
-        recognition.onend = () => {
-          if (sttInterimText && !recognizedTextRef.current.includes(sttInterimText)) {
-            recognizedTextRef.current += ' ' + sttInterimText;
-          }
-        };
-
-        recognition.start();
-        speechRecognitionRef.current = recognition;
+        try {
+          recognition.start();
+          speechRecognitionRef.current = recognition;
+        } catch (e) {
+          console.warn('SpeechRecognition start notice:', e);
+        }
       } catch (e) {
-        console.warn('SpeechRecognition notice:', e);
+        console.warn('SpeechRecognition setup notice:', e);
       }
     }
 
@@ -369,11 +369,9 @@ export function useVoiceCall() {
         }
       };
 
-      mediaRecorder.start();
-      setCallState('user_speaking');
+      mediaRecorder.start(250);
     } catch (err) {
       console.warn('Microphone access notice:', err);
-      setCallState('user_speaking');
     }
   }, [stopCurrentAudio, language, sttInterimText, sendUserTurnText]);
 
@@ -394,7 +392,7 @@ export function useVoiceCall() {
       try { speechRecognitionRef.current.stop(); } catch (e) {}
     }
 
-    // Mobile Safeguard: If MediaRecorder was not active or failed to trigger onstop event, submit immediately!
+    // Safeguard: If MediaRecorder was not active or failed to trigger onstop event, submit immediately!
     if (!stoppedMediaRecorder) {
       const finalText = recognizedTextRef.current.trim() || sttInterimText.trim();
       if (finalText) {
